@@ -29,6 +29,7 @@ Hilt의 주요 Annotation은 다음과 같다.
 - @AndroidEntryPoint
 - @Module
 - @InstallIn
+  
 Annotation은 **컴파일러와 Annotation Processor가 해석할 수 있는 메타데이터를 소스코드에 부착하는 기술**이다.
 Hilt는 이 메타데이터를 기반으로 DI코드(Factory, Component 등)를 자동 생성한다.
 
@@ -38,7 +39,7 @@ Hilt는 Annotation Processing(AP)을 통해 다음의 작업을 수행한다.
 - Dagger가 사용할 Factory, Component, Module 등의 소스코드 자동 생성
 - 런타임 리플렉션 없이 컴파일 타임에 필요한 DI 구조 구성
 
-즉, Annotation Processing은 **"Hilt가 동작하기 위한 DI 코드를 컴파일 전에 미리 생성하는 단계"**라고 볼 수 있다.
+즉, Annotation Processing은 **Hilt가 동작하기 위한 DI 코드를 컴파일 전에 미리 생성하는 단계**라고 볼 수 있다.
 
 ## 3. Hilt의 Bytecode 변조
 Dagger는 Annotation Processing만 사용한다.
@@ -70,7 +71,7 @@ class MainActivity: AppCompatActivity()
 ``` kotlin
 class MainActivity: Hilt_MainActivity 
 ```
-그리고 Hilt_MyActivity 내부에는 이미 DI 초기화 코드가 들어있다.
+그리고 Hilt_MainActivity 내부에는 이미 DI 초기화 코드가 들어있다.
 
 ## 4. Hilt 내부 동작 전체 흐름
 정리하면 Hilt의 전체 동작 과정은 다음과 같다. </br>
