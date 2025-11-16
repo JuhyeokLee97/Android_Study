@@ -76,7 +76,7 @@ private fun NamePickerItem(name: String, onClicked: (String) -> Unit) {
 
 Compose는 내부적으로 UI 트리를 기억하고 있고, 각 Composable이 어떤 입력에 의존하는지 추적한다.
 이러한 정보가 있기 때문에 변경된 부분만 정확히 재실행하여 성능을 최적화할 수 있는 것이다.
-즉, Composable의 핵심 장점 중 하나는 **필요한 부분만 정교하게 다시 그리는 능력(Recomposition)**이다.
+즉, Composable의 핵심 장점 중 하나는 <strong>필요한 부분만 정교하게 다시 그리는 능력(Recomposition)</strong>이다.
 
 ## 3. Recomposition은 추정 기반 재구성이며 언제든 취소될 수 있다
 Compose는 "입력이 바뀌었을 가능성이 있다"고 **추정**하는 순간 Recomposition을 시작한다.
@@ -96,29 +96,29 @@ Compose는 "입력이 바뀌었을 가능성이 있다"고 **추정**하는 순�
 
 이러한 작업은 반드시 ViewModel 또는 Background coroutine에서 수행하고, 결과만 Composable로 전달해야 한다.
 
-## 5. Composable은 미래에 병롤로 실행될 수 있다
-Compose는 현재 단일 메인 스레으데서 실행되지만, 공식 문서에서 명시한 것처럼 **\"미래에는 Composable이 병렬로 실행될 수 있다\"**는 점이 매우 중요하다.
-이는 단순한 가능성이 아니라 Compose 설계 철학의 핵심이며, 개발자가 지금부터 이 설계 방향을 고려해 코드를 작성해야 한다.
+## 5. Composable은 미래에 병렬로 실행될 수 있다
+Compose는 현재 단일 메인 스레으데서 실행되지만, 공식 문서에서 명시한 것처럼 <strong>"미래에는 Composable이 병렬로 실행될 수 있다"</strong>는 점이 매우 중요하다.
+이는 단순한 가능성이 아니라 Compose 설계 철학의 핵심이며, 개발자는 지금부터 이 설계 방향을 고려해 코드를 작성해야 한다.
 
 Compose가 병렬 Recomposition을 지원하게 되면 다음과 같은 최적화가 가능해진다.
 1. 여러 Composable을 **서로 다른 CPU 코어**에서 동시에 실행
-2. **화면에 보이지 않는 요소**는 낮은 우선순위 스레드에서 재구성
-3. 전체 UI를 더 빠르게 계산하기 위한 **백그라운드 스레드 기반 재구성**
+2. **화면에 보이지 않는 요소**는 낮은 우선순위 스레드에서 Recomposition
+3. 전체 UI를 더 빠르게 계산하기 위한 **백그라운드 스레드 기반 Recomposition**
 
 하지만 이러한 기능이 도입되면, 개발자가 잘못 작성한 Composable은 **치명적인 race condition**이나 **잘못된 UI 결과**로 이어질 수 있다.
 
 #### 병렬 실행이 도입되면 무엇이 문제인가?
 Composable 함수가 **서로 다른 스레드에서 동시에 호출될 수 있기 때문**이다. 특히 다음 두 경우가 가장 위험하다.
 1. **Composable 내부에서 ViewModel의 상태를 직접 변경하는 경우**
-2. **Composable 내부에서 지역 변수(var)를 변경하는 경우
+2. **Composable 내부에서 지역 변수(var)를 변경하는 경우**
 
-Compose는 Composable을 백그라운드 스레드 풀에서 실행할 수 있다. 이때 같은 Composable이 여러 스레드에서 동시에 호출되면 다음과 같은 현상이 발생한다.
+Compose는 Composable을 백그라운드 스레드 풀에서 실행될 수 있다. 이때 같은 Composable이 여러 스레드에서 동시에 호출되면 다음과 같은 현상이 발생한다.
 - 증가 연산(`++`)같은 비원자적인 연산이 섞여 race condition 발생
 - UI 결과가 의도와 다르게 꼬임
 - 내부 상태가 예측 불가능해짐
 - Recomposition 타이밍에 따라 값이 계속 달라져 디버깅이 불가능해짐
 
-이것이 Compose가 **\"Composable에 side-effect를 절대 넣지 말라\"**라고 강조하는 이유다.
+이것이 Compose가 <strong>"Composable에 side-effect를 절대 넣지 말라\"</strong>라고 강조하는 이유다.
 
 아래 코드는 공식문서에서 제공한 **Composable 내부에서 로컬 상태를 변경하는 잘못된 예시 코드**이다.
 ``` kotlin
@@ -145,8 +145,33 @@ fun ListWithBug(myList: List<String>) {
 그러므로 이러한 위험을 원천 방지하기 위해 **Composable 내부에서 mutable state 변경을 금지하는 것**이다.
 
 ## 6. Composable은 미래에 어떤 순서로 실행될지 보장되지 않는다
-**현재 Compose는 순서대로 실행되는 것처럼 보인다.** 왜냐하면 현재 Compose는 메인 스레드 단일 실행 모델이기 때문이다.
-**하지만 Compose API는 순서를 보장하지 않는다.** 다시 말해서 멀티 스레드가 도입되면 Composable 실행 순서를 API적으로 보장하지 않는다.
+Compose는 현재 메인 스레드에서 동작하지만, 공식 문서에서 강조하듯 **Compose는 처음부터 멀티스레드를 염두에 두고 설계**되었다. 따라서 미래에는 Composable이 병렬로 실행되거나, 우선순위 기반으로 재배치되어 실행될 수 있다. 이 점은 개발자가 Composable을 작성할 때 반드시 고려해야 하는 중요한 특성이다.
+
+그러므로 미래의 Compose에서는 Coposable 함수가 코드에 적힌 **순서대로 실행될 것이라고 가정할 수 없다.** 즉, 다음처럼 Composable을 나열해도
+```kotlin
+@Composable
+fun ButtonRow() {
+    MyFancyNavigation {
+        StartScreen()
+        MiddleScreen()
+        EndScreen()
+    }
+}
+```
+실제로는 아래와 같은 순서로 실행될 수 있다.
+- EndScreen -> StartScreen -> MiddleScreen
+- MidleScreen -> EndScreen -> StartScreen
+- 혹은 일부는 병렬로 실행되고, 일부는 뒤늦게 실행됨
+
+이러한 동작은 Compose가 UI의 요소의 우선순위나 렌더링 필요성을 고려하여 가장 효율적인 순서를 선택하기 때문이다.
+StartScreen이 항상 MiddleScreen보다 먼저 실행될 것이라고 생각하면 안되고, Composable에서 side-effect를 넣지 말라고 하는 이유다.
+
+Compose는 현재 단일 스레드 환경에서도 **순서 보장을 하지 않는 설계 철학**을 가지고 있으며, 미래에는 멀티스레드를 통한 병렬 실행이 도입될 가능성이 높다.
+따라서 Composable을 작성할 때, 개발자는 다음을 항상 고려해야 한다.
+- **Composable은 순수 UI 생성 함수여야 하며, 다른 Composable의 실행 순서에 의존해서는 안 된다.**
+- **전역 상태 변경이나 값 누적 같은 side-effect는 절대 Composable 내부에 포함되어서는 안 된다.**
+
+이 원칙을 지키면 Compose의 현재 및 미래 실행 모델 모두에서 안전하게 동작하는 UI 구조를 만들 수 있다.
 
 
 
