@@ -15,11 +15,52 @@ Hilt의 컴포넌트는 Android 구조처럼 계층을 가진다.
 화살표는 상위 컴포넌트가 하위 컴포넌트를 가르키고 있는데, 하위 컴포넌트는 상위 컴포넌트의 바인딩에 접근할 수 있다는 의미이다.
 하지만 반대의 경우로 상위 컴포넌트는 하위 컴포넌트의 바인딩에 접근할 수 없다.
 예를 들어 FragmentComponent에서는 ActivityComponent 바인딩에 접근하는 것은 가능하지만 ActivityComponent에서 FragmentComponent 바인딩에 접근하는 것은 불가능하다.
-더 구체적인 예로는 ...(뭐라고 설명하지...? 구체적인 예시 코드가 있으면 좋을텐데)...
+이는 DI 그래프의 일관성과 안정성을 보장하기 위해 Hilt가 가지는 핵심 특성이다.
+
+#### 구체적인 예시: 상위 바인딩 접근 가능 vs 불가능
+다음 예시는 이해를 돕기 위해 **Repository를 Activity 범위에 바인딩하는 경우**를 가정한다.
+<strong>ActivityComponent에 바인딩한 Repository</strong>
+``` kotlin
+@Moudle
+@InstallIn(ActivityComponent::class)
+interface RepositoryModule {
+    @Binds
+    fun bindUserRepository(
+        impl: UserRepositoryImpl
+    ): UserRepository
+}
+```
+<strong>ActivityComponent에 바인당한 Repository는 Fragment에서 사용 가능</strong>
+``` kotlin
+@AndroidEntryPoint
+class ProfileFragment: Fragment() {
+    @Inject lateinit var repository: UserRepository
+}
+```
+FragmentComponent는 ActivityComponent의 하위이므로 ActivityComponent의 바인딩(UserRepository)을 사용할 수 있다.
+
+<strong>반대로 Activity에서 Fragment 전용 바인딩 접근은 불가능</strong>
+``` kotlin
+@Module
+@InstallIn(Fragmentcomponent::class)
+object FragmentOnlyModule {
+    @Provides
+    fun porivdeFragmentHelper(): FragmentHelper = FragmentHelper()
+}
+```
+<strong>FragmentComponent에 바인됭한 FragmentOnlyMoudle은 Activity에서 사용 불가능</strong>
+``` kotlin
+@AndroidEntryPoint
+class MainActivity: AppCompatActivity() {
+    @Inject lateinit var fragmentHelper: FragmentHelper
+}
+```
+위와 같이 ActivityComponent의 하위 컴포넌트인 FragmentComponent의 바인딩에 접근하는 경우 컴파일 타임에 에러가 발생한다.
 
 **Hilt 컴포넌트 계층 구조**를 정리하면 다음과 같다.
 - 하위 컴포넌트는 상위 컴포넌트 바인딩에 접근할 수 있다
 - 상위 컴포넌트는 하위 컴포넌트의 바인딩에 접근할 수 없다.
+
 이 구조 덕분에 DI 그래프의 안정성이 높아지고, **컴파일 타임에 의존성 오류를 미리 잡을 수 있는 것이다.**
 
 ## 2. Hilt 컴포넌트와 Android 컴포넌트 대응
@@ -49,3 +90,65 @@ Hilt 컴포넌트는 Android 컴포넌트의 생명주기와 일치하도록 설
 | `ViewComponent` | `View#super()` | `View` destroye |
 | `ViewWithFragmentComponent` | `View#super()` | `View` destroyed |
 | `ServiceComponent` | `Service#onCreate()` | `Service#onDestroy()` |
+
+## 4. 컴포넌트 Scope
+Hilt에서 바인딩은 기본적으로 **Unscoped**이며, Hilt가 제공하는 Component Scope를 사용해 **특정 범위에서 재사용할 객체**를 지정할 수 있다.
+
+|Android class|	Generated component|	Scope|
+|--|--|--|
+|`Application`| `SingletonComponent`| `@Singleton` |
+|`Activity`| `ActivityRetainedComponent`| `@ActivityRetainedScoped` |
+|`ViewModel`| `ViewModelComponent`| `@ViewModelScoped` |
+|`Activity`| `ActivityComponent`| `@ActivityScoped` |
+|`Fragment`| `FragmentComponent`| `@FragmentScoped` |
+|`View`| `ViewComponent`| `@ViewScoped` |
+|`View` annotated with `@WithFragmentBindings`| `ViewWithFragmentComponent`| `@ViewScoped` |
+|`Service`| `ServiceComponent`| `@ServiceScoped` |
+
+### Unscoped
+Hilt에서 바인딩은 아무런 Scope를 지정하지 않으면 **Unscoped**이다. 그래서 **Hilt는 요청이 발생할 때마다 새로운 인스턴스를 생성**한다.
+
+``` kotlin
+class AnalyticsAdapter @Inject constructor(
+  private val service: AnalyticsService
+) { ... }
+```
+위와 같은 예시 코드의 경우, `AnalyticsAdapter`는 Activity, Fragment 등 어디서 요청하든 매번 새 인스턴스를 생성한다.
+다시 말해서 하나의 Activity 내에서 2개의 `AnalyticsAdapter`를 생성하면 2개의 다른 인스턴스가 생성된다.
+
+``` kotlin
+@AndroidEntryPoint
+class ExampleActivity : AppCompatActivity() {
+
+    @Inject lateinit var adapter1: AnalyticsAdapter
+    @Inject lateinit var adapter2: AnalyticsAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        Log.d("TEST", "adapter1 = $adapter1")
+        Log.d("TEST", "adapter2 = $adapter2")
+    }
+}
+```
+로그를 찍어보면 `adapter1`과 `adapter2`는 서로 다른 인스턴스임을 암 수 있다.
+필요할 때마다 새로 만들어도 상관 없는 가벼운 객체라면 굳이 Scope를 붙이지 않고 Unscoped로 두는 것이 자연스럽다.
+
+### Scoped
+Scope를 지정하면, Hilt는 **해당 컴포넌트 인스턴스당 한 번만 객체를 생성**하고, 그 이후로는 같은 인스턴스를 계속 반환한다.
+예를 들어 `AnalyticsAdapter`를 Activity 범위에서 재사용하고 싶다면 `@ActivityScoped`를 붙이면 된다.
+``` kotlin
+@ActivityScoped
+class AnalyticsAdapter @Inject constructor(
+  private val service: AnalyticsService
+) { ... }
+```
+위와 같이 하면 하나의 Activity 안에서 주입되는 `AnalyticsAdapter`는 **항상 같은 인스턴스**이고 Activity가 파괴되면 인스턴스토 함께 메모리에서 사라진다.
+
+
+### Scope를 쓸 때 주의할 점
+공식 문서에서는 **Scoped 바인딩은 Component가 파괴될 때까지 메모리에 남기 때문에 남용하면 메모리 비용이 커질 수 있는 점**을 주의하라고 한다.
+그래서 Scope는 다음과 같은 경우에만 쓰느 것이 좋다.
+- 내부적으로 상태를 유지해야 하는 경우
+- 동기화가 필요해서 하나의 인스턴스만 있어야 하는 경우
+- 생성 비용이 크고, 측정 결과 재상용이 유의미한 경우
