@@ -15,10 +15,10 @@ NIA 앱의 아키텍쳐 목표는 다음과 같다.
 - 빌드 시간을 최소화한다.
 
 ## 학습한 내용 
-### [1. 아키텍쳐 개요](./Architecture/아키텍쳐%20개요.md)
+### [1. 아키텍쳐 개요](./아키텍쳐%20개요.md)
 
-### [2. 데이터 레이어](./Architecture/Data%20Layer.md)
+### [2. 데이터 레이어](./Data%20Layer.md)
 
-### [3. 도메인 레이어](./Architecture/Domain%20layer.md)
+### [3. 도메인 레이어](./Domain%20layer.md)
 
-### [4. UI 레이어](./Architecture/UI%20Layer.md)
+### [4. UI 레이어](./UI%20Layer.md)
