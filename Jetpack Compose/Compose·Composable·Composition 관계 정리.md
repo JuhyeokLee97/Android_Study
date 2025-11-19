@@ -20,7 +20,7 @@ Compose는 전체 UI 시스템을 관리하며, 그 내부에는 여러 개의 C
 
 
 ## 2. Compose: 전체를 관리하는 시스템(런타임 + 프레임워크)
-Compose = Jetpack Compose UI Toolkit의 핵심 엔진으로 다음과 같은 역할을 한다.
+Compose는 Jetpack Compose UI Toolkit의 핵심 엔진으로 다음과 같은 역할을 한다.
 - **Composable 실행**: Composable 함수를 실제로 실행해 UI 트리 구조를 분석한다.
 - **Composition 생성 및 관리**: Composable의 실행 결과를 UI 트리 구조(**Composition**)으로 유지한다.
 - **Recomposition 관리**: `State` 변화를 감지하고 해당 `State`를 직접적으로 사용하는 Composable만 다시 실행하도록 스케줄링한다.
@@ -48,7 +48,6 @@ fun HomeScreen() {
 ```
 예를 들어 `HomeScreen()` 내부에 `TopBanner()`, `HomeMenu()`, `Navigation()`을 실행하면 Composition은 다음과 같은 트리를 관리한다.
 
-이 HomeScreen을 실행하면 Composition은 다음과 같은 트리가 된다:
 
 ``` 
 HomeScreen
