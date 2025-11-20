@@ -57,7 +57,7 @@ HomeScreen
       └── Navigation
 ```
 
-추가적으로 Composition은 다음과 같은 특징을 같는다.
+추가적으로 Composition은 다음과 같은 특징을 갖는다.
 - **`setContent{}` 호출당 Composition 1개 생성**
 - 최초에 Initial Composition 생성
 - 그 이후에는 Recomposition으로만 업데이트
