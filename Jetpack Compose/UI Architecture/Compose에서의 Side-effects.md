@@ -196,3 +196,158 @@ fun loadNetworkImage(
 > producer 블록에서 value가 갱신될 대마다, 이 `state`도 새로운 값으로 업데이트된다.
 >
 > 이렇게 Compose는 기존 Effect API를 조합하여 새로운 Effect를 만드는 것을 쉽게 할 수 있다.
+
+### `derivedStateOf`: state 객체를 다른 state로 변환하기
+Compose에서는 구독 중인 state 객체나 Composable의 파라미터 값이 변경될 때마다 Recomposition이 발생한다.
+하지만 어떤 state나 파라미터는 UI가 실제로 업데이트해야 하는 빈도보다 더 자주 변경될 수 있고, 이는 불필요한 Recomposition을 발생시킨다.
+
+`derivedStateOf`는 Composable이 실제로 Recomposition이 필요할 때보다 파라미터 값이 더 자주 바뀌는 상황에서 사용하는 것이 좋다.
+예를 들어 스크롤 위치처럼 값은 매우 자주 변하지만, UI는 특정 기준값(threshold)을 넘어갔을 때만 반응하면 되는 경우가 있다.
+
+`derivedStateOf`는 이러한 상황에서 필요한 만큼만 업데이트되는 새로운 Compose state 객체를 생성해준다.
+이 동작 방식은 Kotlin Flow의 `distinctUntilChanged()`와 비슷하다.
+즉, 결과가 변경되지 않으면 업데이트를 발생시키지 않는다.
+
+> 주의: `derivedStateOf`는 큰 비용이 드는 연산이므로, 결과가 변하지 않았을 때 불필요한 Recomposition을 방지해야 하는 상황에서만 사용해야 한다.
+
+#### 올바른 사용 예시
+다음 코드는 `derivedStateOf`를 올바르게 사용한 예시 코드이다.
+``` kotlin
+@Composable
+// When the messages parameter changes, the MessageList
+// composable recomposes. derivedStateOf does not
+// affect this recomposition
+fun MessageList(messages: List<Message>) {
+    Box {
+        val listState = rememberLazyListState()
+
+        LazyColumn(state = listState) {
+            // ...
+        }
+
+        // Show the button if the first visible item is past
+        // the first item. We use a remembered derived state to
+        // minimize unnecessary compositions
+        val showButton by remember {
+            derivedStateOf {
+                listState.firstVisibleItemIndex > 0
+            }
+        }
+
+        AnimatedVisibility(visible = showButton) {
+            ScrollToTopButton()
+        }
+    }
+}
+```
+
+이 예시에서 `firstVisibleItemIndex`는 화면에 보이는 첫 번째 아이템이 달라질 때마다 변경된다. 스크롤할 때 값은 0, 1, 2, 3, 4, 5 ... 와 같이 계속 변한다.
+하지만 실제로 Recomposition은 이 값이 0보다 클 때만 필요하다.
+즉, `firstVisibleItemIndex` 값의 변경 빈도와 UI가 필요로 하는 업데이트 빈도 사이에 차이가 있기 때문에, 이 상황은 `derivedStateOf`를 사용하기 좋은 사례가 된다.
+
+#### 잘못된 사용 예시
+일반적인 실수는 두 개의 Compose state 객체를 조합할 때, "파생된 state를 만든다"는 이유로 `derivedStateOf`를 사용해야 한다고 생각하는 것이다.
+하지만 이 경우 `derivedStateOf`는 필요하지 않으며 오히려 오버헤드를 만든다.
+다음 예시 코드가 이를 보여준다.
+
+``` kotlin
+// DO NOT USE. Incorrect usage of derivedStateOf.
+var firstName by remember { mutableStateOf("") }
+var lastName by remember { mutableStateOf("") }
+
+val fullNameBad by remember { derivedStateOf { "$firstName $lastName" } }
+val fullNameCorrect = "$firstName $lastName"
+```
+
+이 코드에서는 `fullName`은 `firstName`과 `lastName`이 변경될 때마다 업데이트되어야 한다.
+따라서 Recomposition이 자연스럽게 발생해야 하므로, 이 상황에서는 `derivedStateOf`가 전혀 필요하지 않다.
+
+
+### `snapshotFlow`: Compose의 state를 Flow로 변환하기
+`snapshotFlow`는 `State<T>` 객체를 Cold Flow로 변환할 때 사용하면 된다.
+`snapshotFlow`는 Flow가 수집될 때 내부 블록을 실행하며, 블록 내부에서 읽힌 Compose State 값이 변경되면 새로운 값을 Flow로 방출한다.
+이때 이전에 방출된 값과 동일하다면 방출하지 않는데, 이 동작 방식은 `Flow.distinctUntilChanged()`와 비슷하다.
+
+아래 예시는 "사용자가 리스트의 첫 번째 항목을 지나쳤을 때"를 분석 서비스에 기록하는 사이드 이펙트 예시이다.
+
+``` kotlin
+val listState = rememberLazyListState()
+
+LazyColumn(state = listState) {
+    // ...
+}
+
+LaunchedEffect(listState) {
+    snapshotFlow { listState.firstVisibleItemIndex }
+        .map { index -> index > 0 }
+        .distinctUntilChanged()
+        .filter { it == true }
+        .collect {
+            MyAnalyticsService.sendScrolledPastFirstItemEvent()
+        }
+}
+```
+
+위 코드에서는 `listState.firstVisibleItemIndex`를 Flow로 변환함으로써 Flow 연산자(`map`, `filter`, `distinctUntilChanged`)를 적용할 수 있고,
+스크롤 이벤트를 세밀하게 감지하여 원하는 시점에만 사이드 이펙트를 실행할 수 있다.
+
+## Restart effects
+Compose의 일부 Effect(`LaunchedEffect`, `produceState`, `DisposableEffect` 등)는 여러 개의 파라미터를 받을 수 있으며, 이 인자들은 Key 역할을 한다.
+Key가 변경되면 현재 실행 중인 Effect가 취소되고, 새로운 Key로 Effect가 다시 시작된다.
+
+이러한 API의 일반적인 형태는 다음과 같다.
+```
+EffectName(restartIfThisKeyChanges, orThisKey, orThisKey, ...) { block }
+```
+
+이 동작 방식은 미묘한 차이가 있기 때문에, Effect를 재시작하기 위해 전달하는 파라미터가 적절하지 않으면 문제가 발생할 수 있다.
+- Effect가 재시작되어야 하는데 재시작되지 않으면, 앱 동작에 버그가 생길 수 있다.
+- 반대로 Effect가 너무 자주 재시작되면, 불필요한 오버헤드가 발생할 수 있다.
+
+일반적인 기준은 다음과 같다.
+- Effect 블록(`{ block }`) 내부에서 사용되는 mutable 또는 immutable 변수는 Effect의 파라미터(key)로 전달해야 한다.
+- 그 외에도 필요한 경우 Effect를 강제로 재시작시키기 위해 추가 파라미터를 더 넣을 수 있다.
+- 반대로, 변수의 변경이 Effect 재시작을 유발하면 안 되는 경우, 해당 변수는 `rememberUpdatedState`로 감싸야 한다.
+- 어떤 변수가 변경되지 않으며, `remember`으로 값이 고정되어 있다면 해당 변수를 Effect의 Key로 전달할 필요는 없다.
+
+> Key Point: Effect 내부에서 사용되는 변수는 Effect Composable의 Key로 전달하거나, 그렇지 않다면 `rememberUpdatedState`로 감싸서 사용해야 한다.
+
+`DisposableEffect`를 설명하는 예시 코드에서는 Effect 블록 안에서 사용되는 `lifecycleOwner`가 변경될 경우 Effect가 반드시 재시작되어야 하므로,
+`lifecycleOwner`를 `DisposableEffect`의 Key로 전달한다.
+
+``` kotlin
+@Composable
+fun HomeScreen(
+    lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
+    onStart: () -> Unit, // Send the 'started' analytics event
+    onStop: () -> Unit // Send the 'stopped' analytics event
+) {
+    // These values never change in Composition
+    val currentOnStart by rememberUpdatedState(onStart)
+    val currentOnStop by rememberUpdatedState(onStop)
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            /* ... */
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+}
+```
+
+`currentOnStart`와 `currentOnStop`은 `rememberUpdatedState`로 감싸져 있기 때문에 Composition 동안 값이 변경되지 않는다.
+따라서 `DisposableEffect`의 Key로 값을 전달할 필요가 없다.
+
+그러나 `lifecycleOwner`를 Key로 전달하지 않은 상태에서 `lifecycleOwner` 값만 변경되고 `HomeScreen`이 Recomposition되면 
+`DisposableEffect`는 `dispose` 및 재시작되지 않는다.
+이 경우, Effect 내부에서는 이전의 `lifecycleOwner`가 계속 사용되므로 잘못된 동작이 발생한다.
+
+
+### 상수를 Key로 사용하는 경우
+`true`와 같은 상수를 Effect의 Key로 사용하면, 해당 Effect는 해당 Composable 호출 지점의 생명주기를 따르도록 만들 수 있다.
+이 방식은 앞서 살펴본 `LaunchedEffect` 예시처럼, 적절한 사용 사례가 존재한다.
+하지만 이런 방식으로 Key를 설정하기 전에, 정말로 그게 필요한 동작인지 한 번 더 생각해보고 Effect를 쓰는 것이 좋다.
