@@ -6,7 +6,7 @@ Jetpack Compose를 처음 학습하면 가장 먼저 마주하는 개념이 있�
 ## 1. 관계 개요
 다음 그림은 Compose, Composable, Composition 관계를 나타낸 것이다.
 
-<img src="./docs/images/compose-relation.png">
+<img src="../docs/images/compose-relation.png">
 
 Compose는 전체 UI 시스템을 관리하며, 그 내부에는 여러 개의 Composition이 동시에 존재할 수 있다.
 각 Composition은 하나의 `setContent{}` 호출 또는 하나의 `ComposeView`를 통해 생성되며, 해당 UI를 구성하는 **Composable 함수들의 트리 구조**를 유지한다.

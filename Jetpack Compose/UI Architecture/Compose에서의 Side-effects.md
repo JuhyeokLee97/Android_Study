@@ -17,8 +17,10 @@ Composable은 생명주기 특성상 **예측 불가능한 Recomposition**이 �
 > 여기서 말하는 Effect란, UI를 직접적으로 출력하지 않는 Composable 함수로, Composition이 완료된 뒤 side-effect를 실행시키는 역할을 한다.
 
 </br>
+
 Compose에서 Effect는 다양한 가능성을 제공하지만, 그만큼 **과도하게 사용되기 쉽다.**
-Effect 내부에서 수행하는 작업이 반드시 UI 관련 작업인지 확인하고, [Managing State](https://developer.android.com/develop/ui/compose/state#unidirectional-data-flow-in-jetpack-compose) 문서에서 설명하듯, 단방향 데이터 흐름(UDF)을 해치지 않도록 주의해야 한다.
+Effect 내부에서 수행하는 작업이 반드시 UI 관련 작업인지 확인하고,
+[Managing State](https://developer.android.com/develop/ui/compose/state#unidirectional-data-flow-in-jetpack-compose) 문서에서 설명하듯, 단방향 데이터 흐름(UDF)을 해치지 않도록 주의해야 한다.
 
 ### `LaunchedEffect`: Composable의 스코프에서 suspend 함수 실행하기
 Composable의 생명주기 동안 특정 작업을 수행해야 하고, 그 과정에서 suspend 함수를 호출해야 한다면 `LaunchedEffect`를 사용하면 된다.
