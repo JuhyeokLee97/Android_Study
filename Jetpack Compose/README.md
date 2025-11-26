@@ -9,4 +9,6 @@
 ## UI Architecture
 ### [Composable의 생명주기](./UI%20Architecture/Composable의%20생명주기.md)
 ### [Compose에서의 Side-effect](./UI%20Architecture/Compose에서의%20Side-effects.md)
-### [LaunchedEffect, 언제 왜 사용할까?](./UI%20Architecture/LaunchedEffect,%20언제%20왜%20사용할까?.md)
+- [LaunchedEffect, 언제 왜 사용할까?](./UI%20Architecture/LaunchedEffect,%20언제%20왜%20사용할까?.md)
+### [Compose에서의 Navigation](./UI%20Architecture/Compose에서의%20Navigation.md)
+- [Navigation 개요](./UI%20Architecture/Navigation%20개요.md)

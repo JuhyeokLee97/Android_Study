@@ -34,13 +34,13 @@ val navController = rememberNavController()
 ```
 
 `NavController`는 Composable 계층 구조에서 가능한 상위 계층에서 생성해야 한다.
-그렇게 해야 `NavController`에 접그내야 하는 모든 Composable이 이를 참조할 수 있다.
+그렇게 해야 `NavController`에 접근해야 하는 모든 Composable이 이를 참조할 수 있다.
 
 이렇게 `NavController`를 상위에 두면, 화면 내부뿐 아니라 화면 외부 Composable들을 업데이트할 때도 `NavController`를 SSOT(Single Source of Truth)에 따라 사용할 수 있게 된다.
 이는 상태 호이스팅(state hoisting)의 원칙을 따르는 방식이다.
 
 ## NavHost 만들기
-`NavHost`는 현재 네비게이션 대상(destination)을 담는 UI 요소다. 사용자가 앱 안에서 화면을 이동할 때, 앱은 이 `NavHost` 안에서 다른 destination을 교체하며 화면을 전환한다.
+`NavHost`는 현재 내비게이션 대상(destination)을 담는 UI 요소다. 사용자가 앱 안에서 화면을 이동할 때, 앱은 이 `NavHost` 안에서 다른 destination을 교체하며 화면을 전환한다.
 ### 1. NavHost 생성과 동시에 Graph 구성하기
 Route는 특정 destination으로 이동하기 위해 필요한 정보를 포함하며, destination을 식별하는 역할을 한다.
 
@@ -65,7 +65,7 @@ NavHost(navController = navController, startDestination = Profile) {
 ```
 1. `Profile`과 `FriendsList`는 **각각 하나의 Route를 표현하는 직렬화 가능한 객체**이다.
 2. `NavHost`는 `NavController`와 첫 시작인 destination에 해당하는 Route 타입을 받는다.
-3. `NavHost` 내부 람다는 내부적으로 `NavController.createGraph()`를 호출하여 `NavGraph`를 생성한다.
+3. `NavHost` 람다는 내부적으로 `NavController.createGraph()`를 호출하여 `NavGraph`를 생성한다.
 4. 각 `composable<T>()` 호출은 해당 Route 타입을 그래프에 destination으로 추가한다.
 5. 각 `composable<>` 블록 내부에서 선언된 Composable이 `NavHost`가 해당 destination에서 렌더링할 UI를 정의한다.
 
@@ -74,7 +74,7 @@ NavHost(navController = navController, startDestination = Profile) {
 
 이런 경우 `NavController`의 `createGraph()` 메서드를 사용하여 `NavGraph`를 직접 구성할 수 있다.
 
-아래 코도는 앞선 예제와 동일한 그래프를 `NavHost` 외부에서 생성한 뒤, `NavHost`에 전달하는 방식이다.
+아래 코드는 앞선 예제와 동일한 그래프를 `NavHost` 외부에서 생성한 뒤, `NavHost`에 전달하는 방식이다.
 ``` kotlin
 val navGraph by remember(navController) {
   navController.createGraph(startDestination = Profile) {
@@ -92,12 +92,12 @@ Composable로 이동하려면 `NavController.navigate<T>()`를 사용해야 한�
 
 ``` kotlin
 @Serializable
-object FreindsList
+object FriendsList
 
 navController.navigate(route = FriendsList)
 ```
 
-Navigation Graph에서 Composable로 이동하려면, 먼저 **각 destination을 하나의 타입으로 대응하도록 `NavGraph`를 정의**해야 한다.
+Navigation Graph에서 Composable로 이동하려면, 먼저 **각 destination을 하나의 타입으로 대응되도록 `NavGraph`를 정의**해야 한다.
 Composable destination은 `composable<T>()`함수를 사용해 등록한다.
 
 ### Composable에서 이벤트를 외부로 전달하기
@@ -177,7 +177,7 @@ data class Profile(val nickname: String? = null)
 
 ### Destination에서 type-safe한 인자 이용하기
 Route 객체는 `NavBackStackEntry.toRoute()` 또는 `SavedStateHandle.toRoute()`를 통해서도 얻을 수 있다.
-`composable()`를 사용하는 destination을 정의하면 해당 블록에서 `NavBackStackEntry`를 파라미터로 받을 수 있다.
+`composable()`를 사용해 destination을 정의하면 해당 블록에서 `NavBackStackEntry`를 파라미터로 받을 수 있다.
 
 ``` kotlin
 @Serializable
@@ -194,9 +194,9 @@ NavHost(navController = navController, startDestination = Profile(name="John Smi
 ```
 
 - Navigation Graph의 `startDestination`이 `"John Smith"` 값을 갖는 `Profile` route로 설정되어 있다.
-- Destination은 `composable<Profile>{}` 블록 자체다.
+- Destination은 `composable<Profile>{}`의 블록 자체다.
 - `ProfileScreen` Composable은 `name`의 값으로 `profile.name`을 사용한다.
-- 그러므로 `"John Smith"`값이 `ProfileScreen`으로 전달된다.
+- 그러므로 `"John Smith"` 값이 `ProfileScreen`으로 전달된다.
 
 ### 예시 코드
 `NavController`와 `NavHost`를 함께 사용한 예시 코드이다.
@@ -271,7 +271,7 @@ navController.navigate(Profile(id = "user1234"))
 복잡한 객체는 별도의 Data Layer에서 관리하며, 이를 통해 SSOT(Single Source of Truth) 원칙을 따를 수 있다.
 Destination으로 이동한 뒤에는 전달된 ID를 이용해 Data Layer에서 필요한 데이터를 조회하면 된다.
 
-추가로 ViewModel에서 Route에 담긴 인자 값을 참조하기 위해서는 `SavedStateHandle`를 사용하면 된다.
+추가로 ViewModel에서 Route에 담긴 인자 값을 참조하기 위해서는 `SavedStateHandle`을 사용하면 된다.
 
 ``` kotlin
 class UserViewModel(
